@@ -1,98 +1,350 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useState } from "react";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  ActivityIndicator,
+  Button,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+import * as ImagePicker from "expo-image-picker";
+
+import { SafeAreaView } from "react-native-safe-area-context";
+import GooddisplayEpaper, {
+  WriteProgressEvent,
+} from "../../modules/gooddisplay-epaper";
+
+type TraceEntry = {
+  timestampMs: number;
+  phase: string;
+  kind: string;
+  commandHex: string;
+  responseHex: string;
+  durationMs: number;
+  attempt: number;
+  sw1: number;
+  sw2: number;
+};
+
+// type ProgressEvent = {
+//   phase: string;
+//   uploadPercent: number;
+//   packetsSent: number;
+//   packetsTotal: number;
+//   dePollCount: number;
+//   message?: string;
+//   sw1: number;
+//   sw2: number;
+// };
+
+const PANEL_OPTIONS = [
+  {
+    label: '2.13" Mono',
+    inchCode: 213,
+    colorMode: "mono",
+  },
+  {
+    label: '4.2" Mono',
+    inchCode: 420,
+    colorMode: "mono",
+  },
+  {
+    label: '2.9" Tri',
+    inchCode: 290,
+    colorMode: "tri",
+  },
+  {
+    label: '2.13" 4G',
+    inchCode: 213,
+    colorMode: "quad",
+  },
+];
+
+export default function EpaperDebugScreen() {
+  const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const [selectedPanel, setSelectedPanel] = useState(PANEL_OPTIONS[0]);
+
+  const [logs, setLogs] = useState<string[]>([]);
+
+  const [traces, setTraces] = useState<TraceEntry[]>([]);
+
+  const [progress, setProgress] = useState<WriteProgressEvent | null>(null);
+
+  const [isWriting, setIsWriting] = useState(false);
+
+  const appendLog = (message: string) => {
+    console.log(message);
+
+    setLogs((prev) => [
+      `[${new Date().toLocaleTimeString()}] ${message}`,
+      ...prev,
+    ]);
+  };
+
+  useEffect(() => {
+    const progressSub = GooddisplayEpaper.addListener(
+      "onProgress",
+      (event: WriteProgressEvent) => {
+        setProgress(event);
+      },
     );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
+    const statusSub = GooddisplayEpaper.addListener("onStatus", (event) => {
+      appendLog(`STATUS ${event.phase} ${event.message ?? ""}`);
+    });
+
+    const traceSub = GooddisplayEpaper.addListener(
+      "onTrace",
+      (event: TraceEntry) => {
+        setTraces((prev) => [event, ...prev]);
+
+        console.log("TRACE", event.kind, event.commandHex, event.responseHex);
+      },
+    );
+
+    const errorSub = GooddisplayEpaper.addListener("onError", (event) => {
+      appendLog(`ERROR ${event.code}: ${event.message}`);
+
+      setIsWriting(false);
+    });
+
+    const completeSub = GooddisplayEpaper.addListener(
+      "onComplete",
+      (result) => {
+        appendLog(`COMPLETE APDUs=${result.totalApduCount}`);
+
+        appendLog(`Retries=${result.transceiveRetryCount}`);
+
+        appendLog(`DE Polls=${result.dePollCount}`);
+
+        appendLog(`Duration=${result.totalDurationMs}ms`);
+
+        setIsWriting(false);
+      },
+    );
+
+    return () => {
+      progressSub.remove();
+      statusSub.remove();
+      traceSub.remove();
+      errorSub.remove();
+      completeSub.remove();
+    };
+  }, []);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 1,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const uri = result.assets[0].uri;
+
+    setImageUri(uri);
+
+    appendLog(`Selected image: ${uri}`);
+  };
+
+  const startWrite = async () => {
+    if (!imageUri) {
+      appendLog("Select image first");
+      return;
+    }
+
+    try {
+      setIsWriting(true);
+
+      setLogs([]);
+      setTraces([]);
+      setProgress(null);
+
+      appendLog("Waiting for NFC tag...");
+
+      appendLog("Bring E-Paper tag near device");
+
+      const result = await GooddisplayEpaper.writeToTag({
+        imageUri,
+        inchCode: selectedPanel.inchCode,
+        colorMode: selectedPanel.colorMode,
+        emitApduTrace: true,
+        transceiveMaxRetries: 2,
+      });
+
+      appendLog(`WRITE SUCCESS (${result.totalDurationMs}ms)`);
+    } catch (e: any) {
+      appendLog(`WRITE FAILED: ${e?.message ?? String(e)}`);
+    } finally {
+      setIsWriting(false);
+    }
+  };
+
+  const cancelWrite = () => {
+    appendLog("Cancelling write");
+
+    GooddisplayEpaper.cancelWrite();
+
+    setIsWriting(false);
+  };
+
+  const latestTrace = useMemo(() => {
+    return traces[0];
+  }, [traces]);
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        <Text style={styles.title}>GoodDisplay E-Paper Debug</Text>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+        <Button title="Pick Image" onPress={pickImage} />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        {imageUri && (
+          <Image source={{ uri: imageUri }} style={styles.preview} />
+        )}
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+        <Text style={styles.section}>Panel</Text>
+
+        <View style={styles.panelContainer}>
+          {PANEL_OPTIONS.map((panel) => (
+            <TouchableOpacity
+              key={panel.label}
+              style={[
+                styles.panelButton,
+                selectedPanel.label === panel.label &&
+                  styles.panelButtonSelected,
+              ]}
+              onPress={() => setSelectedPanel(panel)}
+            >
+              <Text>{panel.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.actions}>
+          <Button
+            title={isWriting ? "Writing..." : "Write To Tag"}
+            onPress={startWrite}
+            disabled={isWriting}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+          <Button title="Cancel" color="red" onPress={cancelWrite} />
+        </View>
+
+        {isWriting && <ActivityIndicator size="large" />}
+
+        {progress && (
+          <View style={styles.card}>
+            <Text>Phase: {progress.phase}</Text>
+
+            <Text>Upload: {progress.uploadPercent}%</Text>
+
+            <Text>
+              Packets: {progress.packetsSent}/{progress.packetsTotal}
+            </Text>
+
+            <Text>DE Polls: {progress.dePollCount}</Text>
+
+            <Text>
+              SW: {progress.sw1.toString(16)} {progress.sw2.toString(16)}
+            </Text>
+          </View>
+        )}
+
+        {latestTrace && (
+          <View style={styles.card}>
+            <Text style={styles.section}>Latest Trace</Text>
+
+            <Text>Kind: {latestTrace.kind}</Text>
+
+            <Text>Duration: {latestTrace.durationMs}ms</Text>
+
+            <Text numberOfLines={4}>CMD: {latestTrace.commandHex}</Text>
+
+            <Text numberOfLines={2}>RSP: {latestTrace.responseHex}</Text>
+          </View>
+        )}
+
+        <View style={styles.card}>
+          <Text style={styles.section}>Logs</Text>
+
+          {logs.map((log, idx) => (
+            <Text key={`${log}-${idx}`} style={styles.log}>
+              {log}
+            </Text>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: "#fff",
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+
+  content: {
+    padding: 16,
+    gap: 16,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
+
   title: {
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: "700",
   },
-  code: {
-    textTransform: 'uppercase',
+
+  section: {
+    fontSize: 18,
+    fontWeight: "600",
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+
+  preview: {
+    width: 220,
+    height: 220,
+    borderWidth: 1,
+    resizeMode: "contain",
+  },
+
+  panelContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  panelButton: {
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+
+  panelButtonSelected: {
+    backgroundColor: "#ddd",
+  },
+
+  actions: {
+    gap: 12,
+  },
+
+  card: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+
+  log: {
+    fontSize: 12,
   },
 });

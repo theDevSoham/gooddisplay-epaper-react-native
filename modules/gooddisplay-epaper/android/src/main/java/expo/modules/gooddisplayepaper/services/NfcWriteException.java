@@ -25,6 +25,13 @@ public class NfcWriteException extends IOException {
     this.sw2 = 0;
   }
 
+  public NfcWriteException(String message, WriteProgress.Phase phase) {
+    super(message);
+    this.phase = phase;
+    this.sw1 = 0;
+    this.sw2 = 0;
+  }
+
   public WriteProgress.Phase getPhase() {
     return phase;
   }

@@ -18,7 +18,15 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.epaperstudio"
+      "package": "com.anonymous.epaperstudio",
+      "permissions": ["android.permission.NFC"],
+      "intentFilters": [
+        {
+          "action": "android.nfc.action.TECH_DISCOVERED",
+          "data": [],
+          "category": []
+        }
+      ]
     },
     "web": {
       "output": "static",

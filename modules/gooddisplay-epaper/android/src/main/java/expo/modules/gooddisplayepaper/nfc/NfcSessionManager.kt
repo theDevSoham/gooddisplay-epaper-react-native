@@ -8,13 +8,13 @@ import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Build
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * Owns foreground NFC dispatch and suspends until an IsoDep tag is available.
@@ -67,11 +67,15 @@ class NfcSessionManager {
     }
   }
 
+//  fun onActivityPaused(activity: Activity) {
+//    disableForegroundDispatch(activity)
+//    if (waitingActivity.get() === activity && pendingContinuation.get() != null) {
+//      cancelAwait("Activity backgrounded while waiting for NFC tag")
+//    }
+// }
+
   fun onActivityPaused(activity: Activity) {
     disableForegroundDispatch(activity)
-    if (waitingActivity.get() === activity && pendingContinuation.get() != null) {
-      cancelAwait("Activity backgrounded while waiting for NFC tag")
-    }
   }
 
   /** Cancels an in-flight tag wait. Returns true if a wait was active. */

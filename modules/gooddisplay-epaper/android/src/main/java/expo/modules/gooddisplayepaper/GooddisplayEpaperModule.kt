@@ -13,8 +13,8 @@ import expo.modules.gooddisplayepaper.services.WriteCancelledException
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.io.IOException
 import kotlinx.coroutines.runBlocking
+import java.io.IOException
 
 class GooddisplayEpaperModule : Module() {
 
@@ -60,7 +60,7 @@ class GooddisplayEpaperModule : Module() {
     AsyncFunction("writeToTag") { options: WriteToTagOptions ->
       val activity =
           appContext.currentActivity
-              ?: throw CodedException("E_NO_ACTIVITY", "Activity is not available")
+              ?: throw CodedException("E_NO_ACTIVITY", Exception("No current activity"))
       val context = requireContext()
 
       runBlocking {
@@ -140,7 +140,7 @@ class GooddisplayEpaperModule : Module() {
 
   private fun requireContext(): Context {
     return appContext.reactContext
-        ?: throw CodedException("E_NO_CONTEXT", "React context is not available")
+        ?: throw CodedException("E_NO_CONTEXT", Exception("React context is not available"))
   }
 
   private fun closeIsoDepQuietly(isoDep: IsoDep?) {
@@ -156,7 +156,14 @@ class GooddisplayEpaperModule : Module() {
     }
   }
 
-  private fun bridgeException(code: String, cause: Exception): CodedException {
-    return CodedException(code, cause.message ?: code, cause)
+  private fun bridgeException(
+      code: String,
+      cause: Exception
+  ): CodedException {
+
+      return CodedException(
+          code,
+          cause
+      )
   }
 }

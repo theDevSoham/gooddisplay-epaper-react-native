@@ -6,6 +6,10 @@ import expo.modules.gooddisplayepaper.models.WriteProgress;
 public final class WriteCancelledException extends NfcWriteException {
 
   public WriteCancelledException(String message) {
-    super(message, WriteProgress.Phase.FAILED);
+    super(
+        message,
+        WriteProgress.Phase.FAILED,
+        (Throwable) null
+    );
   }
 }

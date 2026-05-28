@@ -200,7 +200,7 @@ public final class NfcEpaperWriter {
       session.checkNotCancelled();
       if (!transceiver.isConnected()) {
         throw new NfcWriteException(
-            "NFC connection lost during busy poll", WriteProgress.Phase.POLLING_BUSY);
+            "NFC connection lost during busy poll", WriteProgress.Phase.POLLING_BUSY, (Throwable) null);
       }
       byte[] response = transceiver.transceive(pollPacket, Kind.BUSY_POLL);
       polls++;

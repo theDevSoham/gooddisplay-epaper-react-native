@@ -141,7 +141,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     epd_init[1] = "F0DA000003F00420";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20   (Screen resolution and color are consistent with A0 command)
                     break;
                 }
-                case 290: //2.9
+                case 290: {//2.9
                     String data_DB1 = "F0DB000067";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006012000800128";//16   2.9 inch monochrome 128x296
                     String RST1 = "A4010C" + "A502000A" + "A40108" + "A502000A" + "A4010C" + "A502000A" + "A40102"; //48
@@ -161,7 +161,8 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00120";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20   (Screen resolution and color are consistent with A0 command)
                     break;
-                case 420:  //Need to transfer data twice, put it into three-color mode
+                }
+                case 420:  {//Need to transfer data twice, put it into three-color mode
                     String data_DB1 = "F0DB000063";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A00603300190012C";//16   4.2 inch three-color 400x300
                     String RST1 = "A4010C" + "A502000A" + "A40108" + "A502000A" + "A4010C" + "A502000A" + "A40102"; //48
@@ -180,6 +181,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00330";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20   (Screen resolution and color are consistent with A0 command)
                     break;
+                }
                 case 370: {
                     //3.71 240x416  UC8171
                     String data_DB = "F0DB00005E";//10    The last digit is half of the sum of all subsequent data.
@@ -329,7 +331,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     epd_init[1] = "F0DA000003F00430";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20   (Screen resolution and color are consistent with A0 command)
                     break;
                 }
-                case 290: //2.9
+                case 290: {//2.9
                     String data_DB1 = "F0DB000068";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006013000800128";//16   2.9 inch three-color 128x296
                     String RST1 = "A4010C" + "A502000A" + "A40108" + "A502000A" + "A4010C" + "A502000A" + "A40102"; //48
@@ -349,6 +351,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00130";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20   (Screen resolution and color are consistent with A0 command)
                     break;
+                }
                 case 420: {
                     String data_DB1 = "F0DB000063";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A00603300190012C";//16   4.2 inch three-color 400x300
@@ -420,7 +423,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     epd_init[1] = "F0DA000003F00720";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
                 }
-                case 153: //1.54-inch 4-color low resolution 152x152
+                case 153: {//1.54-inch 4-color low resolution 152x152
                     String data_DB1 = "F0DB00005A";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006122001300098";//16   1.54-inch 4-color 152x152--304x152 resolution scaled up by double
                     String RST1 = "A40108" + "A5020028" + "A4010C" + "A5020028" + "A40103"; //34  //RST0 40ms RST1 40ms BUSY
@@ -441,6 +444,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00720";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
+                }
                 case 154: {
                     String data_DB1 = "F0DB00005A";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A0061220019000C8";//16   1.54-inch 4-color 200x200--400x200 resolution scaled up by double
@@ -464,7 +468,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     break;
                 }
                 //4-color screen  Conventional driver
-                case 213: //New substrate (Test with reverse consistency to mobile phone during testing for the strongest signal)
+                case 213: {//New substrate (Test with reverse consistency to mobile phone during testing for the strongest signal)
                     String data_DB1 = "F0DB000038";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A0060020010000FA";//16   2.13-inch 4-color 128x250--256x250 resolution scaled up by double
                     String RST1 = "A40108" + "A5020028" + "A4010C" + "A5020028" + "A40103"; //34  //RST0 40ms RST1 40ms BUSY
@@ -477,6 +481,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00020";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
+                }
 
                 case 290: {
                     String data_DB1 = "F0DB00007A";//10    The last digit is half of the sum of all subsequent data.
@@ -506,7 +511,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     epd_init[1] = "F0DA000003F00120";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
                 }
-                case 291://2.9-inch high resolution
+                case 291: {//2.9-inch high resolution
                     String data_DB1 = "F0DB00007A";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006012001500180";//16   2.9-inch 4-color 168x384--366x384 resolution scaled up by double
                     String RST1 = "A40108" + "A5020028" + "A4010C" + "A5020028" + "A40103"; //34  //RST0 40ms RST1 40ms BUSY
@@ -533,6 +538,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00120";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
+                }
                 case 266: {
                     String data_DB1 = "F0DB00007A";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006062001300128";//16   2.66-inch 4-color 152x296--304x296 resolution scaled up by double
@@ -561,7 +567,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     epd_init[1] = "F0DA000003F00620";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
                 }
-                case 267: //2.66-inch high resolution
+                case 267: {//2.66-inch high resolution
                     String data_DB1 = "F0DB00007A";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006062001700168";//16   2.66-inch high resolution 4-color 184x360--368x360 resolution scaled up by double
                     String RST1 = "A40108" + "A5020028" + "A4010C" + "A5020028" + "A40103"; //34  //RST0 40ms RST1 40ms BUSY
@@ -588,6 +594,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     //Screen switching
                     epd_init[1] = "F0DA000003F00620";//10    Screen parameter 0000  Data length 03   Custom screen F0    Screen size resolution 12   Screen color 20 - 4-color  (Screen resolution and color are consistent with A0 command)
                     break;
+                }
                 case 270: {
                     String data_DB1 = "F0DB00007A";//10    The last digit is half of the sum of all subsequent data.
                     String start1 = "A006062001600108";//16   2.7-inch 4-color 176x264--352x264 resolution scaled up by double
@@ -626,7 +633,7 @@ static String[] setEpdInit(int epdColor, int epdInch) {
                     String set_0x03 = "A10403105444";//12   //03 10 54 44
                     String set_0x06 = "A10406C0C0C0";//12  //06 C0 C0 C0
                     String set_0x30 = "A1023008";//8   //30 08
-                    set_0x41= "A1024100";//8   //41 00
+                    String set_0x41= "A1024100";//8   //41 00
                     String set_0x50 = "A1025037";//8   //50 37
                     String set_0x60 = "A103600202";//10    //60 02 02
                     String set_0x61 = "A1056100F001A0";//14    //61 00 F0 01 A0
