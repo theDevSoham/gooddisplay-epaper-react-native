@@ -2,8 +2,6 @@ import { registerWebModule, NativeModule } from 'expo';
 
 import type {
   GooddisplayEpaperModuleEvents,
-  NfcHandoffOptions,
-  NfcHandoffResult,
   SupportedPanel,
   WriteResult,
   WriteToTagOptions,
@@ -16,10 +14,6 @@ class GooddisplayEpaperModule extends NativeModule<GooddisplayEpaperModuleEvents
 
   getSupportedPanels(): SupportedPanel[] {
     return [];
-  }
-
-  async registerNfcHandoff(_options?: NfcHandoffOptions): Promise<NfcHandoffResult> {
-    throw new Error('GooddisplayEpaper NFC is not supported on web');
   }
 
   cancelWrite(): boolean {

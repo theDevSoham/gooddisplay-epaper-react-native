@@ -14,10 +14,6 @@ public class GooddisplayEpaperModule: Module {
       return [] as [[String: Any]]
     }
 
-    AsyncFunction("registerNfcHandoff") { (_: [String: Any]?) in
-      throw UnsupportedPlatformException("iOS NFC e-paper write is not implemented")
-    }
-
     Function("cancelWrite") {
       return false
     }

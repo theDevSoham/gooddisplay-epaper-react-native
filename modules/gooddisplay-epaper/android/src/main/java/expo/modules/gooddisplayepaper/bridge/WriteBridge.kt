@@ -1,6 +1,7 @@
 package expo.modules.gooddisplayepaper.bridge
 
 import android.content.Context
+import android.nfc.tech.IsoDep
 import expo.modules.gooddisplayepaper.models.ProcessedImage
 import expo.modules.gooddisplayepaper.models.ScreenConfig
 import expo.modules.gooddisplayepaper.models.WriteProgress
@@ -24,27 +25,15 @@ class WriteToTagOptions : Record {
   @Field var imageBase64: String? = null
   @Field var inchCode: Int = 0
   @Field var colorMode: String = "mono"
-  @Field var tagIdHex: String? = null
   @Field var busyTimeoutMs: Int? = null
   @Field var transceiveMaxRetries: Int? = null
   @Field var emitApduTrace: Boolean = true
 }
 
-class NfcHandoffOptions : Record {
-  @Field var tagIdHex: String? = null
-}
-
-typealias EventSink = (String, Map<String, Any?>) -> Unit
-
 object WriteBridge {
 
   private val activeCancellation = AtomicReference<WriteCancellation?>(null)
   private val activeSession = AtomicReference<WriteSession?>(null)
-
-  @JvmStatic
-  fun registerNfcHandoff(options: NfcHandoffOptions?) {
-    NfcManagerBridge.openIsoDep(options?.tagIdHex)
-  }
 
   @JvmStatic
   fun cancelWrite(): Boolean {
@@ -61,8 +50,9 @@ object WriteBridge {
   @JvmStatic
   fun writeToTag(
       context: Context,
+      isoDep: IsoDep,
       options: WriteToTagOptions,
-      events: EventSink,
+      callbacks: WriteBridgeCallbacks,
   ): Map<String, Any?> {
     if (options.inchCode <= 0) {
       throw IllegalArgumentException("inchCode is required")
@@ -75,10 +65,6 @@ object WriteBridge {
 
     val screenConfig = EpdConfigFactory.create(colorModeInt, options.inchCode)
     val processedImage = processImage(context, options, screenConfig)
-
-    val isoDep =
-        NfcHandoffStore.peekIsoDep()
-            ?: NfcManagerBridge.openIsoDep(options.tagIdHex)
 
     val cancellation = WriteCancellation()
     activeCancellation.set(cancellation)
@@ -97,19 +83,17 @@ object WriteBridge {
     val listener =
         object : WriteProgressListener {
           override fun onPhaseChanged(phase: WriteProgress.Phase, progress: WriteProgress) {
-            events(
-                "onStatus",
-                mapOf("phase" to phase.name.lowercase(), "message" to progress.message))
-            events("onProgress", progressToMap(progress))
+            callbacks.onStatus(phase.name.lowercase(), progress.message)
+            callbacks.onProgress(progressToMap(progress))
             sessionRef?.let { s ->
-              lastTraceSize = emitNewTraceEntries(options, events, s, lastTraceSize)
+              lastTraceSize = emitNewTraceEntries(options, callbacks, s, lastTraceSize)
             }
           }
 
           override fun onProgress(progress: WriteProgress) {
-            events("onProgress", progressToMap(progress))
+            callbacks.onProgress(progressToMap(progress))
             sessionRef?.let { s ->
-              lastTraceSize = emitNewTraceEntries(options, events, s, lastTraceSize)
+              lastTraceSize = emitNewTraceEntries(options, callbacks, s, lastTraceSize)
             }
           }
         }
@@ -120,14 +104,14 @@ object WriteBridge {
     activeSession.set(session)
 
     try {
-      events("onStatus", mapOf("phase" to "starting", "message" to "NFC write starting"))
+      callbacks.onStatus("starting", "NFC write starting")
       val result = NfcEpaperWriter.write(session)
-      lastTraceSize = emitNewTraceEntries(options, events, session, lastTraceSize)
-      events("onComplete", resultToMap(result))
-      return resultToMap(result)
+      lastTraceSize = emitNewTraceEntries(options, callbacks, session, lastTraceSize)
+      val resultMap = resultToMap(result)
+      callbacks.onComplete(resultMap)
+      return resultMap
     } catch (e: WriteCancelledException) {
-      events(
-          "onError",
+      callbacks.onError(
           mapOf(
               "code" to "CANCELLED",
               "message" to (e.message ?: "cancelled"),
@@ -135,8 +119,7 @@ object WriteBridge {
           ))
       throw e
     } catch (e: NfcWriteException) {
-      events(
-          "onError",
+      callbacks.onError(
           mapOf(
               "code" to "NFC_WRITE",
               "message" to (e.message ?: "write failed"),
@@ -148,7 +131,6 @@ object WriteBridge {
     } finally {
       activeSession.set(null)
       activeCancellation.set(null)
-      NfcHandoffStore.clear()
     }
   }
 
@@ -176,7 +158,7 @@ object WriteBridge {
 
   private fun emitNewTraceEntries(
       options: WriteToTagOptions,
-      events: EventSink,
+      callbacks: WriteBridgeCallbacks,
       session: WriteSession,
       fromIndex: Int,
   ): Int {
@@ -186,7 +168,7 @@ object WriteBridge {
     val trace = session.transceiver.trace
     var index = fromIndex
     while (index < trace.size) {
-      events("onTrace", traceEntryToMap(trace[index]))
+      callbacks.onTrace(traceEntryToMap(trace[index]))
       index++
     }
     return index

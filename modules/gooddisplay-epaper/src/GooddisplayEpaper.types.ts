@@ -4,6 +4,8 @@ export type ColorModeName = 'mono' | 'tri' | 'quad';
 
 export type WritePhase =
   | 'idle'
+  | 'waiting_for_tag'
+  | 'tag_acquired'
   | 'connecting'
   | 'init'
   | 'uploading'
@@ -22,16 +24,10 @@ export interface WriteToTagOptions {
   inchCode: number;
   /** mono | tri | quad (aliases: bw, bwr, 4g) */
   colorMode: ColorModeName | string;
-  /** Optional tag id hex for handoff validation */
-  tagIdHex?: string;
   busyTimeoutMs?: number;
   transceiveMaxRetries?: number;
   /** Emit onTrace events during write (default true) */
   emitApduTrace?: boolean;
-}
-
-export interface NfcHandoffOptions {
-  tagIdHex?: string;
 }
 
 export interface WriteProgressEvent {
@@ -95,10 +91,6 @@ export interface SupportedPanel {
   height: number;
   /** Legacy numeric modes: 2=mono, 3=tri, 4=quad */
   colorModes: number[];
-}
-
-export interface NfcHandoffResult {
-  registered: boolean;
 }
 
 export type GooddisplayEpaperModuleEvents = {
