@@ -13,6 +13,8 @@ import {
 
 import * as ImagePicker from "expo-image-picker";
 
+import * as ImageManipulator from "expo-image-manipulator";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import GooddisplayEpaper, {
   WriteProgressEvent,
@@ -76,6 +78,8 @@ export default function EpaperDebugScreen() {
   const [progress, setProgress] = useState<WriteProgressEvent | null>(null);
 
   const [isWriting, setIsWriting] = useState(false);
+
+  const [rotation, setRotation] = useState(0);
 
   const appendLog = (message: string) => {
     console.log(message);
@@ -147,7 +151,18 @@ export default function EpaperDebugScreen() {
       return;
     }
 
-    const uri = result.assets[0].uri;
+    const rawUri = result.assets[0].uri;
+
+    const imageRef = await ImageManipulator.ImageManipulator.manipulate(rawUri)
+      .rotate(rotation)
+      .renderAsync();
+
+    const manipulated = await imageRef.saveAsync({
+      compress: 1,
+      format: ImageManipulator.SaveFormat.PNG,
+    });
+
+    const uri = manipulated.uri;
 
     setImageUri(uri);
 
@@ -227,6 +242,28 @@ export default function EpaperDebugScreen() {
               onPress={() => setSelectedPanel(panel)}
             >
               <Text>{panel.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.row}>
+          {[0, 90, 180, 270].map((deg) => (
+            <TouchableOpacity
+              key={deg}
+              style={[
+                styles.rotationButton,
+                rotation === deg && styles.rotationButtonActive,
+              ]}
+              onPress={() => setRotation(deg)}
+            >
+              <Text
+                style={{
+                  color: rotation === deg ? "#fff" : "#000",
+                  fontWeight: "600",
+                }}
+              >
+                {deg}°
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -346,5 +383,24 @@ const styles = StyleSheet.create({
 
   log: {
     fontSize: 12,
+  },
+
+  rotationButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginRight: 8,
+  },
+
+  rotationButtonActive: {
+    backgroundColor: "#007AFF",
+  },
+
+  row: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginVertical: 12,
   },
 });
