@@ -13,6 +13,7 @@ public final class RecordingTransceiveChannel implements TransceiveChannel {
   private final Deque<byte[]> responses = new ArrayDeque<>();
   private boolean connected;
   private boolean failNextTransceive;
+  private int disconnectAfterSentCount = -1;
   private int timeoutMs;
 
   public void enqueueResponse(byte[] response) {
@@ -29,6 +30,15 @@ public final class RecordingTransceiveChannel implements TransceiveChannel {
 
   public void setFailNextTransceive(boolean fail) {
     this.failNextTransceive = fail;
+  }
+
+  public void setConnected(boolean connected) {
+    this.connected = connected;
+  }
+
+  /** Simulates tag leaving the field after the given number of sent APDUs. */
+  public void disconnectAfterSentCount(int count) {
+    this.disconnectAfterSentCount = count;
   }
 
   public List<byte[]> getSentCommands() {
@@ -69,6 +79,9 @@ public final class RecordingTransceiveChannel implements TransceiveChannel {
       throw new IOException("simulated transceive failure");
     }
     sentCommands.add(command.clone());
+    if (disconnectAfterSentCount >= 0 && sentCommands.size() >= disconnectAfterSentCount) {
+      connected = false;
+    }
     if (responses.isEmpty()) {
       return new byte[] {(byte) 0x90, 0x00};
     }

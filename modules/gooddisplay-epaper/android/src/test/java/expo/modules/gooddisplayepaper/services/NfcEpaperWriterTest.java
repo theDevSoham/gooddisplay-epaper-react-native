@@ -24,11 +24,11 @@ import org.robolectric.RobolectricTestRunner;
 public class NfcEpaperWriterTest {
 
   @Test
-  public void write_executesInitUploadRefreshAndDePoll() throws Exception {
+  public void write_executesInitUploadRefreshWithoutDePoll() throws Exception {
     RecordingTransceiveChannel channel = new RecordingTransceiveChannel();
     WriteSession session = buildPilotSession(channel);
 
-    // init(3) + upload(16) + refresh(1) + at least 1 DE poll
+    // init(3) + upload(16) + D4 — no DE after legacy wait
     channel.enqueueSuccess();
     channel.enqueueSuccess();
     channel.enqueueSuccess();
@@ -36,8 +36,6 @@ public class NfcEpaperWriterTest {
       channel.enqueueSuccess();
     }
     channel.enqueueSuccess(); // D4
-    channel.enqueueBusy((byte) 0x01);
-    channel.enqueueSuccess(); // DE idle via 90 00
 
     WriteOptions options =
         WriteOptions.builder()
@@ -45,7 +43,7 @@ public class NfcEpaperWriterTest {
             .closeIsoDepOnComplete(false)
             .initDelayMs(0)
             .busyPollIntervalMs(0)
-            .busyTimeoutMs(5000)
+            .legacyRefreshWaitMs(0)
             .build();
 
     WriteSession sessionWithOpts =
@@ -58,9 +56,12 @@ public class NfcEpaperWriterTest {
     WriteResult result = NfcEpaperWriter.write(sessionWithOpts);
 
     assertTrue(result.isSuccess());
-    assertEquals(22, result.getTotalApduCount());
+    assertEquals(20, result.getTotalApduCount());
     assertEquals(16, result.getD2PacketCount());
-    assertTrue(result.getDePollCount() >= 1);
+    assertEquals(0, result.getDePollCount());
+    for (byte[] cmd : channel.getSentCommands()) {
+      assertFalse(cmd.length >= 2 && cmd[1] == ApduConstants.CMD_DE);
+    }
 
     assertEquals(HexCodec.hexStringToBytes(ApduConstants.IC_DIY_HEX), channel.getSentCommands().get(0));
     byte[] firstD2 = channel.getSentCommands().get(3);
@@ -99,16 +100,14 @@ public class NfcEpaperWriterTest {
   }
 
   @Test
-  public void write_busyTimeout() {
+  public void write_refreshWait_nfcDisconnectFails() {
     RecordingTransceiveChannel channel = new RecordingTransceiveChannel();
     WriteSession session = buildPilotSession(channel);
 
     for (int i = 0; i < 20; i++) {
       channel.enqueueSuccess();
     }
-    for (int i = 0; i < 50; i++) {
-      channel.enqueueBusy((byte) 0x01);
-    }
+    channel.disconnectAfterSentCount(20);
 
     WriteOptions options =
         WriteOptions.builder()
@@ -116,7 +115,7 @@ public class NfcEpaperWriterTest {
             .closeIsoDepOnComplete(false)
             .initDelayMs(0)
             .busyPollIntervalMs(0)
-            .busyTimeoutMs(50)
+            .legacyRefreshWaitMs(500)
             .build();
 
     WriteSession s =
@@ -125,10 +124,10 @@ public class NfcEpaperWriterTest {
 
     try {
       NfcEpaperWriter.write(s);
-      fail("expected timeout");
+      fail("expected NfcWriteException");
     } catch (NfcWriteException e) {
       assertEquals(WriteProgress.Phase.POLLING_BUSY, e.getPhase());
-      assertTrue(e.getMessage().contains("timeout"));
+      assertTrue(e.getMessage().contains("NFC connection lost"));
     }
   }
 
@@ -158,7 +157,7 @@ public class NfcEpaperWriterTest {
     RecordingTransceiveChannel channel = new RecordingTransceiveChannel();
     WriteSession session = buildPilotSession(channel);
 
-    for (int i = 0; i < 25; i++) {
+    for (int i = 0; i < 20; i++) {
       channel.enqueueSuccess();
     }
 
@@ -168,6 +167,7 @@ public class NfcEpaperWriterTest {
             .closeIsoDepOnComplete(true)
             .initDelayMs(0)
             .busyPollIntervalMs(0)
+            .legacyRefreshWaitMs(0)
             .build();
 
     WriteSession s =

@@ -12,6 +12,7 @@ public final class WriteOptions {
   private final int initDelayMs;
   private final int busyPollIntervalMs;
   private final int busyTimeoutMs;
+  private final int legacyRefreshWaitMs;
   private final int transceiveMaxRetries;
   private final boolean requireDaSuccess;
   private final boolean requireD4Success;
@@ -23,6 +24,7 @@ public final class WriteOptions {
     this.initDelayMs = builder.initDelayMs;
     this.busyPollIntervalMs = builder.busyPollIntervalMs;
     this.busyTimeoutMs = builder.busyTimeoutMs;
+    this.legacyRefreshWaitMs = builder.legacyRefreshWaitMs;
     this.transceiveMaxRetries = builder.transceiveMaxRetries;
     this.requireDaSuccess = builder.requireDaSuccess;
     this.requireD4Success = builder.requireD4Success;
@@ -46,6 +48,11 @@ public final class WriteOptions {
     return busyTimeoutMs;
   }
 
+  /** Resolved legacy post-D4 wait; falls back to {@link #legacyRefreshWaitMs(int)} when unset. */
+  public int getLegacyRefreshWaitMs(int colorMode) {
+    return legacyRefreshWaitMs >= 0 ? legacyRefreshWaitMs : legacyRefreshWaitMs(colorMode);
+  }
+
   public int getTransceiveMaxRetries() {
     return transceiveMaxRetries;
   }
@@ -66,18 +73,26 @@ public final class WriteOptions {
     return closeIsoDepOnComplete;
   }
 
-  /** Legacy timer caps used as DE poll safety timeout per color mode. */
-  public static int defaultBusyTimeoutMs(int colorMode) {
+  /**
+   * Post-D4 wait matching {@code activity_imageview.startRefreshMonitoring} tick thresholds
+   * (100 ms per tick).
+   */
+  public static int legacyRefreshWaitMs(int colorMode) {
     switch (colorMode) {
       case ColorMode.MONO:
-        return 5_000;
+        return 2_000; // count == 20
       case ColorMode.TRI:
-        return 20_000;
+        return 16_000; // count == 160
       case ColorMode.QUAD:
-        return 25_000;
+        return 20_000; // count == 200
       default:
-        return 25_000;
+        return 20_000;
     }
+  }
+
+  /** @deprecated Use {@link #legacyRefreshWaitMs(int)}; kept for bridge override field name. */
+  public static int defaultBusyTimeoutMs(int colorMode) {
+    return WriteOptions.legacyRefreshWaitMs(colorMode);
   }
 
   public static Builder builder() {
@@ -89,6 +104,7 @@ public final class WriteOptions {
     private int initDelayMs = ApduConstants.INIT_DELAY_MS;
     private int busyPollIntervalMs = 100;
     private int busyTimeoutMs = 25_000;
+    private int legacyRefreshWaitMs = -1;
     private int transceiveMaxRetries = 1;
     private boolean requireDaSuccess = true;
     private boolean requireD4Success = true;
@@ -117,6 +133,17 @@ public final class WriteOptions {
 
     public Builder busyTimeoutForColorMode(int colorMode) {
       this.busyTimeoutMs = defaultBusyTimeoutMs(colorMode);
+      this.legacyRefreshWaitMs = WriteOptions.legacyRefreshWaitMs(colorMode);
+      return this;
+    }
+
+    public Builder legacyRefreshWaitForColorMode(int colorMode) {
+      this.legacyRefreshWaitMs = WriteOptions.legacyRefreshWaitMs(colorMode);
+      return this;
+    }
+
+    public Builder legacyRefreshWaitMs(int ms) {
+      this.legacyRefreshWaitMs = ms;
       return this;
     }
 

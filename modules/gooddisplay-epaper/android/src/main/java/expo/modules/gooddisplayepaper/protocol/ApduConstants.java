@@ -39,7 +39,7 @@ public final class ApduConstants {
   public static final String READ_CONFIG_HEX = "F0D1010000";
 
   /**
-   * DE busy poll — not in legacy app; target immediate-return refresh flow (verify on tag).
+   * DE busy poll — not used by legacy app; retained for tests / future tags that support it.
    */
   public static final String BUSY_POLL_HEX = "F0DE010000";
 

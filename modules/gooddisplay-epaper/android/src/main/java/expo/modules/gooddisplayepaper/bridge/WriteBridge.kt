@@ -71,9 +71,9 @@ object WriteBridge {
 
     val writeOptionsBuilder =
         WriteOptions.builder()
-            .busyTimeoutForColorMode(colorModeInt)
+            .legacyRefreshWaitForColorMode(colorModeInt)
             .apduTraceLogging(true)
-    options.busyTimeoutMs?.let { writeOptionsBuilder.busyTimeoutMs(it) }
+    options.busyTimeoutMs?.let { writeOptionsBuilder.legacyRefreshWaitMs(it) }
     options.transceiveMaxRetries?.let { writeOptionsBuilder.transceiveMaxRetries(it) }
     val writeOptions = writeOptionsBuilder.build()
 

@@ -22,7 +22,7 @@ public final class NfcEpaperWriter {
   private NfcEpaperWriter() {}
 
   /**
-   * Execute full flash: IC DIY → DB → DA → D2* → D4 → DE poll.
+   * Execute full flash: IC DIY → DB → DA → D2* → D4 → legacy refresh wait (no DE).
    *
    * @return metrics + APDU trace on success
    */
@@ -77,7 +77,7 @@ public final class NfcEpaperWriter {
       session.notifyPhase(WriteProgress.Phase.POLLING_BUSY);
       transceiver.setTracePhase(WriteProgress.Phase.POLLING_BUSY);
       t0 = System.nanoTime();
-      pollUntilIdle(session);
+      waitForLegacyRefresh(session);
       busyMs = (System.nanoTime() - t0) / 1_000_000L;
 
       progress.setPhase(WriteProgress.Phase.COMPLETE);
@@ -182,50 +182,47 @@ public final class NfcEpaperWriter {
     }
   }
 
-  private static void pollUntilIdle(WriteSession session) throws IOException {
+  /**
+   * Legacy {@code startRefreshMonitoring} parity: fixed delay after D4, 100 ms ticks, no DE APDU.
+   *
+   * <p>Reference: {@code activity_imageview.java} lines 904–957.
+   */
+  private static void waitForLegacyRefresh(WriteSession session) throws IOException {
     ApduTransceiver transceiver = session.getTransceiver();
     WriteProgress progress = session.getProgress();
     WriteOptions options = session.getOptions();
-    int busyTimeout =
-        options.getBusyTimeoutMs() > 0
-            ? options.getBusyTimeoutMs()
-            : WriteOptions.defaultBusyTimeoutMs(session.getScreenConfig().getColorMode());
+    int colorMode = session.getScreenConfig().getColorMode();
+    int waitMs = options.getLegacyRefreshWaitMs(colorMode);
     int interval = options.getBusyPollIntervalMs();
-    ApduPacket pollPacket = ApduBuilder.buildBusyPoll();
+    if (interval <= 0) {
+      interval = 100;
+    }
 
-    long deadline = System.currentTimeMillis() + busyTimeout;
-  int polls = 0;
+    long deadline = System.currentTimeMillis() + waitMs;
+    int ticks = 0;
+
+    if (options.isApduTraceLogging()) {
+      Log.d(LOG_TAG, "legacy refresh wait " + waitMs + "ms (colorMode=" + colorMode + ")");
+    }
 
     while (System.currentTimeMillis() < deadline) {
       session.checkNotCancelled();
       if (!transceiver.isConnected()) {
         throw new NfcWriteException(
-            "NFC connection lost during busy poll", WriteProgress.Phase.POLLING_BUSY, (Throwable) null);
+            "NFC connection lost during refresh wait",
+            WriteProgress.Phase.POLLING_BUSY,
+            (Throwable) null);
       }
-      byte[] response = transceiver.transceive(pollPacket, Kind.BUSY_POLL);
-      polls++;
-      progress.setDePollCount(polls);
+      ticks++;
+      progress.setDePollCount(ticks);
       session.notifyProgress();
 
-      if (ApduResponse.isBusyIdle(response)) {
-        if (options.isApduTraceLogging()) {
-          Log.d(LOG_TAG, "DE idle after " + polls + " polls");
-        }
-        return;
+      long remaining = deadline - System.currentTimeMillis();
+      if (remaining <= 0) {
+        break;
       }
-
-      transceiver.sleep(interval);
+      transceiver.sleep((int) Math.min(interval, remaining));
     }
-
-    throw new NfcWriteException(
-        "DE busy poll timeout after "
-            + polls
-            + " polls ("
-            + busyTimeout
-            + "ms)",
-        WriteProgress.Phase.POLLING_BUSY,
-        progress.getLastSw1(),
-        progress.getLastSw2());
   }
 
   private static void validateLegacySuccess(byte[] response, WriteProgress.Phase phase, String step)
